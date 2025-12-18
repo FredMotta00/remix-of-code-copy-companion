@@ -9,6 +9,7 @@ import Layout from "@/components/layout/Layout";
 import Home from "@/pages/Home";
 import ProdutoDetalhes from "@/pages/ProdutoDetalhes";
 import MinhasReservas from "@/pages/MinhasReservas";
+import PlanosMensais from "@/pages/PlanosMensais";
 import Configuracoes from "@/pages/Configuracoes";
 import Auth from "@/pages/Auth";
 import NotFound from "@/pages/NotFound";
@@ -34,6 +35,7 @@ function App() {
               <Route element={<Layout />}>
                 <Route path="/" element={<Home />} />
                 <Route path="/produto/:id" element={<ProdutoDetalhes />} />
+                <Route path="/planos" element={<PlanosMensais />} />
                 <Route path="/minhas-reservas" element={<MinhasReservas />} />
                 <Route path="/configuracoes" element={<Configuracoes />} />
               </Route>
