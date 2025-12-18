@@ -1,213 +1,272 @@
-import { Check, Star, Zap, Shield, Clock, Headphones } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState } from 'react';
+import { Calendar, MapPin, Search, Check, Truck, Shield, Clock, Headphones, ChevronRight } from 'lucide-react';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Link } from 'react-router-dom';
 
 const PlanosMensais = () => {
-  const planos = [
-    {
-      nome: 'Básico',
-      preco: 299,
-      descricao: 'Ideal para pequenos eventos e uso ocasional',
-      destaque: false,
-      equipamentos: '1 equipamento',
-      beneficios: [
-        'Acesso a equipamentos básicos',
-        'Suporte por e-mail',
-        'Entrega gratuita na região',
-        'Manutenção preventiva inclusa',
-      ],
-    },
-    {
-      nome: 'Profissional',
-      preco: 599,
-      descricao: 'Perfeito para produtoras e eventos regulares',
-      destaque: true,
-      equipamentos: 'Até 3 equipamentos',
-      beneficios: [
-        'Acesso a todos os equipamentos',
-        'Suporte prioritário 24/7',
-        'Entrega e retirada gratuita',
-        'Manutenção preventiva inclusa',
-        'Equipamento reserva garantido',
-        'Desconto de 15% em aluguéis extras',
-      ],
-    },
-    {
-      nome: 'Enterprise',
-      preco: 1299,
-      descricao: 'Solução completa para grandes produções',
-      destaque: false,
-      equipamentos: 'Até 8 equipamentos',
-      beneficios: [
-        'Acesso ilimitado ao catálogo',
-        'Gerente de conta dedicado',
-        'Entrega express em até 4h',
-        'Manutenção e suporte on-site',
-        'Equipamentos reserva ilimitados',
-        'Desconto de 30% em aluguéis extras',
-        'Treinamento técnico incluso',
-        'Seguro premium incluso',
-      ],
-    },
-  ];
+  const [localRetirada, setLocalRetirada] = useState('');
+  const [dataRetirada, setDataRetirada] = useState('');
+  const [dataDevolucao, setDataDevolucao] = useState('');
 
-  const vantagensGerais = [
+  const { data: produtos, isLoading } = useQuery({
+    queryKey: ['produtos-mensal'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('produtos')
+        .select('*')
+        .eq('status', 'disponivel')
+        .order('preco_diario', { ascending: true });
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const calcularPrecoMensal = (precoDiario: number) => {
+    // Desconto de 30% para aluguel mensal
+    return Math.round(precoDiario * 30 * 0.7);
+  };
+
+  const beneficios = [
     {
       icon: Shield,
-      titulo: 'Proteção Garantida',
-      descricao: 'Todos os planos incluem seguro contra danos e roubo',
+      titulo: 'Seguro Incluso',
+      descricao: 'Proteção completa durante todo o período de locação',
+    },
+    {
+      icon: Truck,
+      titulo: 'Entrega e Retirada',
+      descricao: 'Serviço de entrega grátis em toda a região',
     },
     {
       icon: Clock,
-      titulo: 'Flexibilidade Total',
-      descricao: 'Troque de equipamento quando precisar, sem burocracia',
+      titulo: 'Flexibilidade',
+      descricao: 'Mínimo de 30 dias com possibilidade de extensão',
     },
     {
       icon: Headphones,
-      titulo: 'Suporte Especializado',
-      descricao: 'Equipe técnica pronta para ajudar em qualquer situação',
-    },
-    {
-      icon: Zap,
-      titulo: 'Equipamentos Atualizados',
-      descricao: 'Sempre acesso às últimas versões e lançamentos',
+      titulo: 'Suporte Técnico',
+      descricao: 'Assistência especializada 24 horas por dia',
     },
   ];
 
   return (
     <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="py-16 px-4 text-center bg-gradient-to-b from-primary/10 to-background">
-        <div className="container max-w-4xl mx-auto">
-          <Badge variant="secondary" className="mb-4">
-            <Star className="h-3 w-3 mr-1" />
-            Novo
-          </Badge>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Planos Mensais
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Tenha acesso aos melhores equipamentos com previsibilidade de custos e benefícios exclusivos para assinantes.
-          </p>
+      {/* Hero Section com formulário */}
+      <section className="relative bg-gradient-to-r from-primary to-primary/80 text-primary-foreground py-12 px-4">
+        <div className="container max-w-6xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-8 items-center">
+            <div>
+              <Badge variant="secondary" className="mb-4">
+                Até 30% OFF
+              </Badge>
+              <h1 className="text-4xl md:text-5xl font-bold mb-4">
+                Aluguel Mensal
+              </h1>
+              <p className="text-xl opacity-90 mb-6">
+                Alugue equipamentos por períodos maiores e economize. 
+                Ideal para projetos de longa duração, produções e eventos recorrentes.
+              </p>
+              <ul className="space-y-2">
+                <li className="flex items-center gap-2">
+                  <Check className="h-5 w-5" />
+                  <span>Mínimo de 30 dias de locação</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="h-5 w-5" />
+                  <span>Desconto especial de até 30%</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="h-5 w-5" />
+                  <span>Sem burocracia, com suporte completo</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Formulário de Busca */}
+            <Card className="bg-card/95 backdrop-blur">
+              <CardHeader>
+                <CardTitle className="text-foreground">Alugue um equipamento mensal</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="local" className="text-foreground">Local de Retirada</Label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="local"
+                      placeholder="Onde você quer retirar?"
+                      className="pl-10"
+                      value={localRetirada}
+                      onChange={(e) => setLocalRetirada(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="dataRetirada" className="text-foreground">Data de Retirada</Label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="dataRetirada"
+                        type="date"
+                        className="pl-10"
+                        value={dataRetirada}
+                        onChange={(e) => setDataRetirada(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="dataDevolucao" className="text-foreground">Data de Devolução</Label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="dataDevolucao"
+                        type="date"
+                        className="pl-10"
+                        value={dataDevolucao}
+                        onChange={(e) => setDataDevolucao(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button className="w-full gap-2" size="lg">
+                  <Search className="h-4 w-4" />
+                  Buscar Equipamentos
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
         </div>
       </section>
 
-      {/* Planos */}
+      {/* O que é aluguel mensal */}
+      <section className="py-12 px-4 bg-muted/30">
+        <div className="container max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-8 items-center">
+            <div>
+              <h2 className="text-3xl font-bold mb-4">O que é o Aluguel Mensal?</h2>
+              <p className="text-muted-foreground mb-4">
+                O aluguel mensal é perfeito para quem precisa de equipamentos por períodos mais longos. 
+                Com o período mínimo de 30 dias, você tem a flexibilidade de escolher o equipamento 
+                que melhor atende às suas necessidades.
+              </p>
+              <p className="text-muted-foreground mb-6">
+                Tenha a liberdade de usar quando quiser, sem se preocupar com os custos de manutenção 
+                e as responsabilidades de ter um equipamento próprio. Economize até 30% em comparação 
+                com o aluguel diário.
+              </p>
+              <Button variant="outline" className="gap-2">
+                Saiba mais
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {beneficios.map((beneficio) => (
+                <Card key={beneficio.titulo} className="text-center">
+                  <CardContent className="pt-6">
+                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                      <beneficio.icon className="h-6 w-6 text-primary" />
+                    </div>
+                    <h3 className="font-semibold mb-1 text-sm">{beneficio.titulo}</h3>
+                    <p className="text-xs text-muted-foreground">{beneficio.descricao}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Equipamentos disponíveis */}
       <section className="py-12 px-4">
         <div className="container max-w-6xl mx-auto">
-          <div className="grid md:grid-cols-3 gap-6">
-            {planos.map((plano) => (
-              <Card
-                key={plano.nome}
-                className={`relative flex flex-col transition-all duration-300 hover:shadow-xl ${
-                  plano.destaque
-                    ? 'border-primary shadow-lg scale-105 md:scale-110'
-                    : 'hover:border-primary/50'
-                }`}
-              >
-                {plano.destaque && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-primary text-primary-foreground shadow-md">
-                      Mais Popular
-                    </Badge>
-                  </div>
-                )}
-                <CardHeader className="text-center pb-2">
-                  <CardTitle className="text-2xl">{plano.nome}</CardTitle>
-                  <CardDescription>{plano.descricao}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1">
-                  <div className="text-center mb-6">
-                    <span className="text-4xl font-bold">R$ {plano.preco}</span>
-                    <span className="text-muted-foreground">/mês</span>
-                    <p className="text-sm text-primary font-medium mt-1">
-                      {plano.equipamentos}
-                    </p>
-                  </div>
-                  <ul className="space-y-3">
-                    {plano.beneficios.map((beneficio, index) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                        <span className="text-sm">{beneficio}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-                <CardFooter>
-                  <Button
-                    className="w-full"
-                    variant={plano.destaque ? 'default' : 'outline'}
-                    size="lg"
-                  >
-                    Assinar Agora
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-3xl font-bold">Equipamentos para Aluguel Mensal</h2>
+              <p className="text-muted-foreground">
+                Confira nossos equipamentos disponíveis com preços especiais para locação mensal
+              </p>
+            </div>
+            <Link to="/">
+              <Button variant="outline" className="gap-2">
+                Ver todos
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </Link>
           </div>
-        </div>
-      </section>
 
-      {/* Vantagens Gerais */}
-      <section className="py-16 px-4 bg-muted/30">
-        <div className="container max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">
-            Por que escolher um plano mensal?
-          </h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {vantagensGerais.map((vantagem) => (
-              <Card key={vantagem.titulo} className="text-center border-none bg-card/50">
-                <CardContent className="pt-6">
-                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                    <vantagem.icon className="h-6 w-6 text-primary" />
-                  </div>
-                  <h3 className="font-semibold mb-2">{vantagem.titulo}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {vantagem.descricao}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
+          {isLoading ? (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="animate-pulse">
+                  <div className="h-48 bg-muted rounded-t-lg" />
+                  <CardContent className="p-4 space-y-3">
+                    <div className="h-6 bg-muted rounded w-3/4" />
+                    <div className="h-4 bg-muted rounded w-1/2" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {produtos?.slice(0, 6).map((produto) => {
+                const precoMensal = calcularPrecoMensal(produto.preco_diario);
+                const precoDiarioTotal = produto.preco_diario * 30;
 
-      {/* FAQ Section */}
-      <section className="py-16 px-4">
-        <div className="container max-w-3xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">
-            Perguntas Frequentes
-          </h2>
-          <div className="space-y-4">
-            {[
-              {
-                pergunta: 'Posso trocar de plano a qualquer momento?',
-                resposta: 'Sim! Você pode fazer upgrade ou downgrade do seu plano a qualquer momento. A diferença será calculada proporcionalmente.',
-              },
-              {
-                pergunta: 'Como funciona a troca de equipamentos?',
-                resposta: 'Você pode solicitar a troca de equipamentos diretamente pelo app ou entrando em contato com nosso suporte. A entrega e retirada são feitas no mesmo dia.',
-              },
-              {
-                pergunta: 'O que acontece se o equipamento apresentar defeito?',
-                resposta: 'Realizamos a substituição imediata do equipamento sem custo adicional. Nosso suporte técnico está disponível para resolver qualquer problema.',
-              },
-              {
-                pergunta: 'Existe fidelidade?',
-                resposta: 'Não! Você pode cancelar seu plano a qualquer momento sem multas ou taxas de cancelamento.',
-              },
-            ].map((faq, index) => (
-              <Card key={index}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">{faq.pergunta}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">{faq.resposta}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                return (
+                  <Card key={produto.id} className="overflow-hidden group hover:shadow-lg transition-all duration-300">
+                    <div className="relative h-48 bg-muted">
+                      {produto.imagem ? (
+                        <img
+                          src={produto.imagem}
+                          alt={produto.nome}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                          Sem imagem
+                        </div>
+                      )}
+                      <Badge className="absolute top-3 left-3 bg-destructive text-destructive-foreground">
+                        30% OFF
+                      </Badge>
+                    </div>
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold text-lg mb-2">{produto.nome}</h3>
+                      <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+                        {produto.descricao}
+                      </p>
+                      <div className="flex items-end justify-between">
+                        <div>
+                          <p className="text-xs text-muted-foreground line-through">
+                            R$ {precoDiarioTotal.toLocaleString('pt-BR')}/mês
+                          </p>
+                          <p className="text-2xl font-bold text-primary">
+                            R$ {precoMensal.toLocaleString('pt-BR')}
+                            <span className="text-sm font-normal text-muted-foreground">/mês</span>
+                          </p>
+                        </div>
+                        <Link to={`/produto/${produto.id}`}>
+                          <Button size="sm">
+                            Alugar
+                          </Button>
+                        </Link>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
@@ -215,14 +274,19 @@ const PlanosMensais = () => {
       <section className="py-16 px-4 bg-primary text-primary-foreground">
         <div className="container max-w-4xl mx-auto text-center">
           <h2 className="text-3xl font-bold mb-4">
-            Pronto para começar?
+            Pronto para economizar?
           </h2>
           <p className="text-lg opacity-90 mb-8 max-w-2xl mx-auto">
-            Escolha o plano ideal para suas necessidades e tenha acesso aos melhores equipamentos do mercado.
+            Entre em contato conosco e solicite um orçamento personalizado para o seu projeto.
           </p>
-          <Button size="lg" variant="secondary" className="text-lg px-8">
-            Ver Planos Disponíveis
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button size="lg" variant="secondary" className="text-lg px-8">
+              Solicitar Orçamento
+            </Button>
+            <Button size="lg" variant="outline" className="text-lg px-8 border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary">
+              Falar com Consultor
+            </Button>
+          </div>
         </div>
       </section>
     </div>
