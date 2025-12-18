@@ -10,8 +10,7 @@ const Header = () => {
 
   const navItems = [
     { to: '/', label: 'Produtos', icon: Package },
-    { to: '/minhas-reservas', label: 'Minhas Reservas', icon: Calendar },
-    { to: '/configuracoes', label: '', icon: Settings, iconOnly: true }
+    { to: '/minhas-reservas', label: 'Minhas Reservas', icon: Calendar }
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -27,9 +26,8 @@ const Header = () => {
           />
         </Link>
 
-        {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-1">
-          {navItems.map(({ to, label, icon: Icon, iconOnly }) => (
+          {navItems.map(({ to, label, icon: Icon }) => (
             <Link key={to} to={to}>
               <Button
                 variant={isActive(to) ? 'default' : 'ghost'}
@@ -38,10 +36,10 @@ const Header = () => {
                     ? 'shadow-md' 
                     : 'hover:bg-accent'
                 }`}
-                size={iconOnly ? 'icon' : 'sm'}
+                size="sm"
               >
                 <Icon className="h-4 w-4" />
-                {!iconOnly && label}
+                {label}
               </Button>
             </Link>
           ))}
@@ -49,6 +47,19 @@ const Header = () => {
             <Button variant="outline" size="sm" className="gap-2 ml-2">
               <LogIn className="h-4 w-4" />
               Login
+            </Button>
+          </Link>
+          <Link to="/configuracoes">
+            <Button
+              variant={isActive('/configuracoes') ? 'default' : 'ghost'}
+              className={`transition-all duration-200 ${
+                isActive('/configuracoes') 
+                  ? 'shadow-md' 
+                  : 'hover:bg-accent'
+              }`}
+              size="icon"
+            >
+              <Settings className="h-4 w-4" />
             </Button>
           </Link>
         </nav>
@@ -64,10 +75,9 @@ const Header = () => {
         </Button>
       </div>
 
-      {/* Mobile Navigation */}
       {menuOpen && (
         <nav className="md:hidden border-t border-border/40 bg-card/95 backdrop-blur-sm p-4 space-y-2 animate-fade-in">
-          {navItems.map(({ to, label, icon: Icon, iconOnly }) => (
+          {navItems.map(({ to, label, icon: Icon }) => (
             <Link
               key={to}
               to={to}
@@ -78,7 +88,7 @@ const Header = () => {
                 className="w-full justify-start gap-2"
               >
                 <Icon className="h-4 w-4" />
-                {iconOnly ? 'Configurações' : label}
+                {label}
               </Button>
             </Link>
           ))}
@@ -86,6 +96,15 @@ const Header = () => {
             <Button variant="outline" className="w-full justify-start gap-2 mt-2">
               <LogIn className="h-4 w-4" />
               Login
+            </Button>
+          </Link>
+          <Link to="/configuracoes" onClick={() => setMenuOpen(false)}>
+            <Button
+              variant={isActive('/configuracoes') ? 'default' : 'ghost'}
+              className="w-full justify-start gap-2"
+            >
+              <Settings className="h-4 w-4" />
+              Configurações
             </Button>
           </Link>
         </nav>
