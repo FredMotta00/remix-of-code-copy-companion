@@ -111,7 +111,7 @@ const Home = () => {
               <div className="flex flex-col sm:flex-row gap-2">
                 <div className="relative flex-1">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                  <Input placeholder="Buscar por nome, tipo ou característica (ex: relé, CT Analyser, proteção...)" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-12 h-12 border-0 bg-muted/50 rounded-xl text-base focus-visible:ring-primary" />
+                  <Input placeholder="Buscar equipamentos..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-12 h-12 border-0 bg-muted/50 rounded-xl text-base focus-visible:ring-primary" />
                 </div>
                 <Button className="h-12 px-8 rounded-xl shadow-md hover:shadow-lg transition-all">
                   <Search className="w-5 h-5 sm:mr-2" />
