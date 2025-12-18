@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Package, Calendar, Settings, Menu, X } from 'lucide-react';
+import { Package, Calendar, Settings, Menu, X, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import logoExs from '@/assets/logo-exs.png';
@@ -11,7 +11,7 @@ const Header = () => {
   const navItems = [
     { to: '/', label: 'Produtos', icon: Package },
     { to: '/minhas-reservas', label: 'Minhas Reservas', icon: Calendar },
-    { to: '/configuracoes', label: 'Configurações', icon: Settings }
+    { to: '/configuracoes', label: '', icon: Settings, iconOnly: true }
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -29,7 +29,7 @@ const Header = () => {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-1">
-          {navItems.map(({ to, label, icon: Icon }) => (
+          {navItems.map(({ to, label, icon: Icon, iconOnly }) => (
             <Link key={to} to={to}>
               <Button
                 variant={isActive(to) ? 'default' : 'ghost'}
@@ -38,13 +38,19 @@ const Header = () => {
                     ? 'shadow-md' 
                     : 'hover:bg-accent'
                 }`}
-                size="sm"
+                size={iconOnly ? 'icon' : 'sm'}
               >
                 <Icon className="h-4 w-4" />
-                {label}
+                {!iconOnly && label}
               </Button>
             </Link>
           ))}
+          <Link to="/auth">
+            <Button variant="outline" size="sm" className="gap-2 ml-2">
+              <LogIn className="h-4 w-4" />
+              Login
+            </Button>
+          </Link>
         </nav>
 
         {/* Mobile Menu Button */}
@@ -61,7 +67,7 @@ const Header = () => {
       {/* Mobile Navigation */}
       {menuOpen && (
         <nav className="md:hidden border-t border-border/40 bg-card/95 backdrop-blur-sm p-4 space-y-2 animate-fade-in">
-          {navItems.map(({ to, label, icon: Icon }) => (
+          {navItems.map(({ to, label, icon: Icon, iconOnly }) => (
             <Link
               key={to}
               to={to}
@@ -72,10 +78,16 @@ const Header = () => {
                 className="w-full justify-start gap-2"
               >
                 <Icon className="h-4 w-4" />
-                {label}
+                {iconOnly ? 'Configurações' : label}
               </Button>
             </Link>
           ))}
+          <Link to="/auth" onClick={() => setMenuOpen(false)}>
+            <Button variant="outline" className="w-full justify-start gap-2 mt-2">
+              <LogIn className="h-4 w-4" />
+              Login
+            </Button>
+          </Link>
         </nav>
       )}
     </header>

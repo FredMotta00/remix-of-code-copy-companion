@@ -10,6 +10,7 @@ import Home from "@/pages/Home";
 import ProdutoDetalhes from "@/pages/ProdutoDetalhes";
 import MinhasReservas from "@/pages/MinhasReservas";
 import Configuracoes from "@/pages/Configuracoes";
+import Auth from "@/pages/Auth";
 import NotFound from "@/pages/NotFound";
 
 // Admin pages
@@ -36,6 +37,9 @@ function App() {
                 <Route path="/minhas-reservas" element={<MinhasReservas />} />
                 <Route path="/configuracoes" element={<Configuracoes />} />
               </Route>
+
+              {/* Auth route */}
+              <Route path="/auth" element={<Auth />} />
 
               {/* Admin routes */}
               <Route path="/admin" element={<AdminLayout />}>
