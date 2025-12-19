@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calendar, MapPin, Search, Check, Truck, Shield, Clock, Headphones, ChevronRight } from 'lucide-react';
+import { Calendar, MapPin, Search, Check, Truck, Shield, Clock, Headphones, ChevronRight, Home } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +10,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 
 const PlanosMensais = () => {
-  const [localRetirada, setLocalRetirada] = useState('');
+  const [tipoEntrega, setTipoEntrega] = useState<'retirada' | 'entrega'>('retirada');
+  const [endereco, setEndereco] = useState('');
   const [dataRetirada, setDataRetirada] = useState('');
   const [dataDevolucao, setDataDevolucao] = useState('');
 
@@ -41,8 +42,8 @@ const PlanosMensais = () => {
     },
     {
       icon: Truck,
-      titulo: 'Entrega e Retirada',
-      descricao: 'Serviço de entrega grátis em toda a região',
+      titulo: 'Entrega ou Retirada',
+      descricao: 'Escolha receber em casa ou retirar em nosso local',
     },
     {
       icon: Clock,
@@ -83,8 +84,8 @@ const PlanosMensais = () => {
                   <span>Desconto especial de até 30%</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <Check className="h-5 w-5" />
-                  <span>Sem burocracia, com suporte completo</span>
+                  <Truck className="h-5 w-5" />
+                  <span>Entregamos ou você retira no local</span>
                 </li>
               </ul>
             </div>
@@ -95,22 +96,61 @@ const PlanosMensais = () => {
                 <CardTitle className="text-foreground">Alugue um equipamento mensal</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Toggle Retirada/Entrega */}
                 <div className="space-y-2">
-                  <Label htmlFor="local" className="text-foreground">Local de Retirada</Label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="local"
-                      placeholder="Onde você quer retirar?"
-                      className="pl-10"
-                      value={localRetirada}
-                      onChange={(e) => setLocalRetirada(e.target.value)}
-                    />
+                  <Label className="text-foreground">Como você prefere?</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant={tipoEntrega === 'retirada' ? 'default' : 'outline'}
+                      className="gap-2"
+                      onClick={() => setTipoEntrega('retirada')}
+                    >
+                      <MapPin className="h-4 w-4" />
+                      Retirar no local
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={tipoEntrega === 'entrega' ? 'default' : 'outline'}
+                      className="gap-2"
+                      onClick={() => setTipoEntrega('entrega')}
+                    >
+                      <Truck className="h-4 w-4" />
+                      Receber em casa
+                    </Button>
                   </div>
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="endereco" className="text-foreground">
+                    {tipoEntrega === 'retirada' ? 'Local de Retirada' : 'Endereço de Entrega'}
+                  </Label>
+                  <div className="relative">
+                    {tipoEntrega === 'retirada' ? (
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Home className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    )}
+                    <Input
+                      id="endereco"
+                      placeholder={tipoEntrega === 'retirada' ? 'Selecione o local de retirada' : 'Digite seu endereço completo'}
+                      className="pl-10"
+                      value={endereco}
+                      onChange={(e) => setEndereco(e.target.value)}
+                    />
+                  </div>
+                  {tipoEntrega === 'entrega' && (
+                    <p className="text-xs text-muted-foreground">
+                      Entregamos em toda a região metropolitana
+                    </p>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="dataRetirada" className="text-foreground">Data de Retirada</Label>
+                    <Label htmlFor="dataRetirada" className="text-foreground">
+                      {tipoEntrega === 'retirada' ? 'Data de Retirada' : 'Data de Entrega'}
+                    </Label>
                     <div className="relative">
                       <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
