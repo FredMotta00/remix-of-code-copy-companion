@@ -1,9 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Briefcase, SlidersHorizontal, Loader2, Zap, Shield, Clock, Headphones, GraduationCap, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Briefcase, Loader2, Zap, Shield, Clock, Headphones, GraduationCap } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ProdutoCard from '@/components/produtos/ProdutoCard';
 import { supabase } from '@/integrations/supabase/client';
 import { Produto } from '@/lib/database.types';
@@ -14,6 +13,9 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from '@/components/ui/carousel';
+import { Card, CardContent } from '@/components/ui/card';
+import { Link } from 'react-router-dom';
+import Autoplay from 'embla-carousel-autoplay';
 
 const features = [{
   icon: Shield,
@@ -90,43 +92,98 @@ const Home = () => {
         <div className="absolute top-20 right-20 w-96 h-96 bg-primary-foreground/5 rounded-full blur-3xl" />
         <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-primary-foreground/5 rounded-full blur-3xl" />
         
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28">
-          <div className="text-center max-w-4xl mx-auto">
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 bg-primary-foreground/10 backdrop-blur-sm rounded-full px-5 py-2.5 mb-8 border border-primary-foreground/10 animate-fade-up">
-              <Zap className="w-4 h-4 text-primary-foreground" />
-              <span className="text-primary-foreground/90 text-sm font-medium">Locação de Equipamentos Profissionais</span>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+            {/* Left Content */}
+            <div className="text-center lg:text-left">
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2 bg-primary-foreground/10 backdrop-blur-sm rounded-full px-5 py-2.5 mb-6 border border-primary-foreground/10 animate-fade-up">
+                <Zap className="w-4 h-4 text-primary-foreground" />
+                <span className="text-primary-foreground/90 text-sm font-medium">Locação de Equipamentos Profissionais</span>
+              </div>
+
+              {/* Title */}
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-primary-foreground mb-4 tracking-tight animate-fade-up" style={{
+                animationDelay: '0.1s'
+              }}>
+                Equipamentos de<br />
+                <span className="text-primary-foreground/80">Alta Performance</span>
+              </h1>
+
+              <p className="text-base md:text-lg text-primary-foreground/75 mb-6 max-w-xl mx-auto lg:mx-0 leading-relaxed animate-fade-up" style={{
+                animationDelay: '0.2s'
+              }}>
+                Alugue equipamentos de teste de relés de proteção com total flexibilidade. 
+                Verifique disponibilidade em tempo real e reserve online.
+              </p>
+
+              {/* Search Bar */}
+              <div className="bg-card rounded-2xl shadow-xl p-2 max-w-xl mx-auto lg:mx-0 animate-fade-up" style={{
+                animationDelay: '0.3s'
+              }}>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input placeholder="Buscar equipamentos..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-12 h-12 border-0 bg-muted/50 rounded-xl text-base focus-visible:ring-primary" />
+                  </div>
+                  <Button className="h-12 px-8 rounded-xl shadow-md hover:shadow-lg transition-all">
+                    <Search className="w-5 h-5 sm:mr-2" />
+                    <span className="hidden sm:inline">Buscar</span>
+                  </Button>
+                </div>
+              </div>
             </div>
 
-            {/* Title */}
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-primary-foreground mb-6 tracking-tight animate-fade-up" style={{
-              animationDelay: '0.1s'
-            }}>
-              Equipamentos de<br />
-              <span className="text-primary-foreground/80">Alta Performance</span>
-            </h1>
-
-            <p className="text-lg md:text-xl text-primary-foreground/75 mb-10 max-w-2xl mx-auto leading-relaxed animate-fade-up" style={{
-              animationDelay: '0.2s'
-            }}>
-              Alugue equipamentos de teste de relés de proteção com total flexibilidade. 
-              Verifique disponibilidade em tempo real e reserve online.
-            </p>
-
-            {/* Search Bar */}
-            <div className="bg-card rounded-2xl shadow-xl p-2 max-w-2xl mx-auto animate-fade-up" style={{
-              animationDelay: '0.3s'
-            }}>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                  <Input placeholder="Buscar equipamentos..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-12 h-12 border-0 bg-muted/50 rounded-xl text-base focus-visible:ring-primary" />
-                </div>
-                <Button className="h-12 px-8 rounded-xl shadow-md hover:shadow-lg transition-all">
-                  <Search className="w-5 h-5 sm:mr-2" />
-                  <span className="hidden sm:inline">Buscar</span>
-                </Button>
-              </div>
+            {/* Right - Hero Carousel */}
+            <div className="hidden lg:block animate-fade-up" style={{ animationDelay: '0.4s' }}>
+              {!isLoading && produtos.length > 0 && (
+                <Carousel
+                  opts={{
+                    align: "center",
+                    loop: true,
+                  }}
+                  plugins={[
+                    Autoplay({
+                      delay: 4000,
+                      stopOnInteraction: false,
+                    }),
+                  ]}
+                  className="w-full max-w-md mx-auto"
+                >
+                  <CarouselContent>
+                    {produtos.slice(0, 5).map((produto) => (
+                      <CarouselItem key={produto.id}>
+                        <Link to={`/produto/${produto.id}`}>
+                          <Card className="bg-card/90 backdrop-blur-sm border-primary-foreground/10 overflow-hidden hover:shadow-2xl transition-all duration-300 group">
+                            <div className="relative h-48 bg-muted">
+                              {produto.imagem ? (
+                                <img
+                                  src={produto.imagem}
+                                  alt={produto.nome}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                                  <Briefcase className="w-16 h-16 opacity-30" />
+                                </div>
+                              )}
+                            </div>
+                            <CardContent className="p-4">
+                              <h3 className="font-semibold text-lg text-foreground mb-1 line-clamp-1">{produto.nome}</h3>
+                              <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{produto.descricao}</p>
+                              <p className="text-primary font-bold">
+                                R$ {produto.preco_diario.toLocaleString('pt-BR')}<span className="text-sm font-normal text-muted-foreground">/dia</span>
+                              </p>
+                            </CardContent>
+                          </Card>
+                        </Link>
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                  <CarouselPrevious className="left-0 bg-card/80 hover:bg-card" />
+                  <CarouselNext className="right-0 bg-card/80 hover:bg-card" />
+                </Carousel>
+              )}
             </div>
           </div>
         </div>
