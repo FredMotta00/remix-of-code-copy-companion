@@ -27,6 +27,7 @@ export type Database = {
           tier: Database["public"]["Enums"]["company_tier"]
           total_locacoes_ano: number
           updated_at: string
+          user_id: string | null
           wallet_balance: number
         }
         Insert: {
@@ -41,6 +42,7 @@ export type Database = {
           tier?: Database["public"]["Enums"]["company_tier"]
           total_locacoes_ano?: number
           updated_at?: string
+          user_id?: string | null
           wallet_balance?: number
         }
         Update: {
@@ -55,6 +57,7 @@ export type Database = {
           tier?: Database["public"]["Enums"]["company_tier"]
           total_locacoes_ano?: number
           updated_at?: string
+          user_id?: string | null
           wallet_balance?: number
         }
         Relationships: []

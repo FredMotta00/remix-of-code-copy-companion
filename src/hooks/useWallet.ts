@@ -2,27 +2,48 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Company, WalletTransaction, TIER_CONFIG, CompanyTier } from '@/lib/database.types';
 import { useToast } from '@/hooks/use-toast';
+import { useState, useEffect } from 'react';
+import { User } from '@supabase/supabase-js';
 
-export const useWallet = (email?: string) => {
+export const useWallet = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
-  // Fetch company by email
+  // Listen for auth changes
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user ?? null);
+        setIsLoadingAuth(false);
+      }
+    );
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setIsLoadingAuth(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Fetch company by user_id
   const { data: company, isLoading: isLoadingCompany } = useQuery({
-    queryKey: ['company', email],
+    queryKey: ['company', user?.id],
     queryFn: async () => {
-      if (!email) return null;
+      if (!user?.id) return null;
       
       const { data, error } = await supabase
         .from('companies')
         .select('*')
-        .eq('email', email)
+        .eq('user_id', user.id)
         .maybeSingle();
 
       if (error) throw error;
       return data as Company | null;
     },
-    enabled: !!email
+    enabled: !!user?.id
   });
 
   // Fetch wallet transactions
@@ -43,22 +64,21 @@ export const useWallet = (email?: string) => {
     enabled: !!company?.id
   });
 
-  // Create or get company
+  // Create company for current user
   const createCompanyMutation = useMutation({
-    mutationFn: async ({ nome, email, cnpj }: { nome: string; email: string; cnpj?: string }) => {
-      // Check if company exists
-      const { data: existing } = await supabase
-        .from('companies')
-        .select('*')
-        .eq('email', email)
-        .maybeSingle();
+    mutationFn: async ({ nome, cnpj }: { nome: string; cnpj?: string }) => {
+      if (!user?.id || !user?.email) {
+        throw new Error('Usuário não autenticado');
+      }
 
-      if (existing) return existing as Company;
-
-      // Create new company
       const { data, error } = await supabase
         .from('companies')
-        .insert({ nome, email, cnpj: cnpj || null })
+        .insert({ 
+          nome, 
+          email: user.email, 
+          cnpj: cnpj || null,
+          user_id: user.id 
+        })
         .select()
         .single();
 
@@ -67,27 +87,38 @@ export const useWallet = (email?: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['company'] });
+      toast({
+        title: 'Empresa cadastrada!',
+        description: 'Sua carteira EXS Wallet foi criada com sucesso.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro ao cadastrar empresa',
+        description: error.message,
+        variant: 'destructive'
+      });
     }
   });
 
   // Add cashback (earn) - called when reservation is created
   const addCashbackMutation = useMutation({
     mutationFn: async ({ 
-      companyId, 
       reservaId, 
       amount, 
       description 
     }: { 
-      companyId: string; 
       reservaId: string; 
       amount: number; 
       description: string;
     }) => {
+      if (!company) throw new Error('Empresa não encontrada');
+
       // Create pending transaction
       const { data, error } = await supabase
         .from('wallet_transactions')
         .insert({
-          company_id: companyId,
+          company_id: company.id,
           reserva_id: reservaId,
           type: 'earn',
           status: 'pending',
@@ -103,9 +134,9 @@ export const useWallet = (email?: string) => {
       const { error: updateError } = await supabase
         .from('companies')
         .update({ 
-          pending_balance: (company?.pending_balance || 0) + amount 
+          pending_balance: (company.pending_balance || 0) + amount 
         })
-        .eq('id', companyId);
+        .eq('id', company.id);
 
       if (updateError) throw updateError;
 
@@ -120,6 +151,8 @@ export const useWallet = (email?: string) => {
   // Release cashback (make available) - called when equipment is returned
   const releaseCashbackMutation = useMutation({
     mutationFn: async (reservaId: string) => {
+      if (!company) throw new Error('Empresa não encontrada');
+
       // Find pending transaction for this reservation
       const { data: transaction, error: findError } = await supabase
         .from('wallet_transactions')
@@ -144,10 +177,10 @@ export const useWallet = (email?: string) => {
       const { error: updateCompanyError } = await supabase
         .from('companies')
         .update({ 
-          wallet_balance: (company?.wallet_balance || 0) + transaction.amount,
-          pending_balance: Math.max(0, (company?.pending_balance || 0) - transaction.amount)
+          wallet_balance: (company.wallet_balance || 0) + transaction.amount,
+          pending_balance: Math.max(0, (company.pending_balance || 0) - transaction.amount)
         })
-        .eq('id', transaction.company_id);
+        .eq('id', company.id);
 
       if (updateCompanyError) throw updateCompanyError;
 
@@ -166,12 +199,10 @@ export const useWallet = (email?: string) => {
   // Use wallet balance (burn)
   const useBalanceMutation = useMutation({
     mutationFn: async ({ 
-      companyId, 
       reservaId, 
       amount, 
       description 
     }: { 
-      companyId: string; 
       reservaId: string; 
       amount: number; 
       description: string;
@@ -184,7 +215,7 @@ export const useWallet = (email?: string) => {
       const { data, error } = await supabase
         .from('wallet_transactions')
         .insert({
-          company_id: companyId,
+          company_id: company.id,
           reserva_id: reservaId,
           type: 'burn',
           status: 'used',
@@ -202,7 +233,7 @@ export const useWallet = (email?: string) => {
         .update({ 
           wallet_balance: company.wallet_balance - amount 
         })
-        .eq('id', companyId);
+        .eq('id', company.id);
 
       if (updateError) throw updateError;
 
@@ -214,20 +245,43 @@ export const useWallet = (email?: string) => {
     }
   });
 
+  // Update company annual total
+  const updateAnnualTotalMutation = useMutation({
+    mutationFn: async (amount: number) => {
+      if (!company) throw new Error('Empresa não encontrada');
+
+      const { error } = await supabase
+        .from('companies')
+        .update({ 
+          total_locacoes_ano: (company.total_locacoes_ano || 0) + amount 
+        })
+        .eq('id', company.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['company'] });
+    }
+  });
+
   // Calculate cashback for a given amount based on tier
-  const calculateCashback = (amount: number, tier: CompanyTier = 'silver'): number => {
-    const percentage = TIER_CONFIG[tier].cashbackPercentage;
+  const calculateCashback = (amount: number, tier?: CompanyTier): number => {
+    const tierToUse = tier || company?.tier || 'silver';
+    const percentage = TIER_CONFIG[tierToUse].cashbackPercentage;
     return Math.round(amount * percentage * 100) / 100;
   };
 
   return {
+    user,
     company,
     transactions,
-    isLoading: isLoadingCompany || isLoadingTransactions,
+    isLoading: isLoadingAuth || isLoadingCompany || isLoadingTransactions,
+    isAuthenticated: !!user,
     createCompany: createCompanyMutation.mutateAsync,
     addCashback: addCashbackMutation.mutateAsync,
     releaseCashback: releaseCashbackMutation.mutateAsync,
     useBalance: useBalanceMutation.mutateAsync,
+    updateAnnualTotal: updateAnnualTotalMutation.mutateAsync,
     calculateCashback,
     isCreatingCompany: createCompanyMutation.isPending
   };

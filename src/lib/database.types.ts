@@ -45,6 +45,7 @@ export interface Company {
   pending_balance: number;
   tier: CompanyTier;
   total_locacoes_ano: number;
+  user_id: string;
   created_at: string;
   updated_at: string;
 }

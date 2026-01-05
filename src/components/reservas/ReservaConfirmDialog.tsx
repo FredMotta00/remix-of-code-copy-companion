@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,7 @@ import { useWallet } from '@/hooks/useWallet';
 import { UseWalletToggle } from '@/components/wallet/UseWalletToggle';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Loader2, CheckCircle2, Calendar, User, Mail, Phone, FileText, CreditCard, Building2, Sparkles } from 'lucide-react';
+import { Loader2, CheckCircle2, Calendar, User, Mail, Phone, FileText, CreditCard, Sparkles } from 'lucide-react';
 
 interface ReservaConfirmDialogProps {
   open: boolean;
@@ -43,12 +43,17 @@ export const ReservaConfirmDialog = ({
     nome: '',
     email: '',
     telefone: '',
-    observacoes: '',
-    empresa: '',
-    cnpj: ''
+    observacoes: ''
   });
 
-  const { company, createCompany, addCashback, useBalance, calculateCashback } = useWallet(formData.email);
+  const { 
+    company, 
+    isAuthenticated, 
+    addCashback, 
+    useBalance, 
+    updateAnnualTotal,
+    calculateCashback 
+  } = useWallet();
 
   // Calculate values
   const walletDiscount = useWalletBalance && company 
@@ -57,10 +62,10 @@ export const ReservaConfirmDialog = ({
   const valorFinal = valorTotal - walletDiscount;
   const cashbackAmount = company 
     ? calculateCashback(valorFinal, company.tier) 
-    : calculateCashback(valorFinal, 'silver');
+    : 0;
   const cashbackPercentage = company 
     ? TIER_CONFIG[company.tier].cashbackPercentage * 100 
-    : TIER_CONFIG.silver.cashbackPercentage * 100;
+    : 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,27 +82,10 @@ export const ReservaConfirmDialog = ({
     setLoading(true);
 
     try {
-      // Create or get company if empresa name is provided
-      let companyId: string | null = null;
-      
-      if (formData.empresa) {
-        const companyData = await createCompany({
-          nome: formData.empresa,
-          email: formData.email,
-          cnpj: formData.cnpj || undefined
-        });
-        companyId = companyData.id;
-
-        // If using wallet balance, process the burn
-        if (useWalletBalance && walletDiscount > 0) {
-          // We need to create the reservation first to get the ID
-        }
-      }
-
       // Create reservation
       const { data: reserva, error } = await supabase.from('reservas').insert({
         produto_id: produto.id,
-        company_id: companyId,
+        company_id: company?.id || null,
         cliente_nome: formData.nome,
         cliente_email: formData.email,
         cliente_telefone: formData.telefone || null,
@@ -112,12 +100,11 @@ export const ReservaConfirmDialog = ({
 
       if (error) throw error;
 
-      // If company exists and we have a valid reservation
-      if (companyId && reserva) {
+      // If user has company and reservation was created successfully
+      if (company && reserva) {
         // Use wallet balance if applicable
         if (useWalletBalance && walletDiscount > 0) {
           await useBalance({
-            companyId,
             reservaId: reserva.id,
             amount: walletDiscount,
             description: `Desconto na reserva de ${produto.nome}`
@@ -127,7 +114,6 @@ export const ReservaConfirmDialog = ({
         // Add cashback transaction (pending)
         if (cashbackAmount > 0) {
           await addCashback({
-            companyId,
             reservaId: reserva.id,
             amount: cashbackAmount,
             description: `Cashback ${cashbackPercentage}% - ${produto.nome}`
@@ -135,12 +121,7 @@ export const ReservaConfirmDialog = ({
         }
 
         // Update company's annual rental total
-        await supabase
-          .from('companies')
-          .update({ 
-            total_locacoes_ano: (company?.total_locacoes_ano || 0) + valorFinal 
-          })
-          .eq('id', companyId);
+        await updateAnnualTotal(valorFinal);
       }
 
       setSuccess(true);
@@ -155,7 +136,7 @@ export const ReservaConfirmDialog = ({
         onSuccess();
         onOpenChange(false);
         setSuccess(false);
-        setFormData({ nome: '', email: '', telefone: '', observacoes: '', empresa: '', cnpj: '' });
+        setFormData({ nome: '', email: '', telefone: '', observacoes: '' });
         setUseWalletBalance(false);
       }, 2000);
 
@@ -258,7 +239,7 @@ export const ReservaConfirmDialog = ({
               </span>
             </div>
             
-            {cashbackAmount > 0 && formData.empresa && (
+            {cashbackAmount > 0 && isAuthenticated && company && (
               <div className="flex items-center justify-between text-sm bg-primary/5 p-2 rounded-lg">
                 <span className="text-primary flex items-center gap-1">
                   <Sparkles className="h-3 w-3" />
@@ -272,32 +253,6 @@ export const ReservaConfirmDialog = ({
 
         {/* Formulário */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="empresa" className="flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-                Empresa
-              </Label>
-              <Input
-                id="empresa"
-                value={formData.empresa}
-                onChange={(e) => setFormData({ ...formData, empresa: e.target.value })}
-                placeholder="Nome da empresa"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cnpj" className="flex items-center gap-2">
-                CNPJ
-              </Label>
-              <Input
-                id="cnpj"
-                value={formData.cnpj}
-                onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })}
-                placeholder="00.000.000/0000-00"
-              />
-            </div>
-          </div>
-
           <div className="space-y-2">
             <Label htmlFor="nome" className="flex items-center gap-2">
               <User className="h-4 w-4 text-muted-foreground" />
@@ -327,8 +282,8 @@ export const ReservaConfirmDialog = ({
             />
           </div>
 
-          {/* Wallet Toggle */}
-          {formData.empresa && formData.email && (
+          {/* Wallet Toggle - only show if user is authenticated and has company */}
+          {isAuthenticated && company && (
             <UseWalletToggle
               company={company}
               useWallet={useWalletBalance}
