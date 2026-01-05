@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      companies: {
+        Row: {
+          cnpj: string | null
+          created_at: string
+          email: string
+          endereco: string | null
+          id: string
+          nome: string
+          pending_balance: number
+          telefone: string | null
+          tier: Database["public"]["Enums"]["company_tier"]
+          total_locacoes_ano: number
+          updated_at: string
+          wallet_balance: number
+        }
+        Insert: {
+          cnpj?: string | null
+          created_at?: string
+          email: string
+          endereco?: string | null
+          id?: string
+          nome: string
+          pending_balance?: number
+          telefone?: string | null
+          tier?: Database["public"]["Enums"]["company_tier"]
+          total_locacoes_ano?: number
+          updated_at?: string
+          wallet_balance?: number
+        }
+        Update: {
+          cnpj?: string | null
+          created_at?: string
+          email?: string
+          endereco?: string | null
+          id?: string
+          nome?: string
+          pending_balance?: number
+          telefone?: string | null
+          tier?: Database["public"]["Enums"]["company_tier"]
+          total_locacoes_ano?: number
+          updated_at?: string
+          wallet_balance?: number
+        }
+        Relationships: []
+      }
       produtos: {
         Row: {
           created_at: string
@@ -79,9 +124,11 @@ export type Database = {
       }
       reservas: {
         Row: {
+          cashback_amount: number | null
           cliente_email: string
           cliente_nome: string
           cliente_telefone: string | null
+          company_id: string | null
           created_at: string
           data_fim: string
           data_inicio: string
@@ -91,11 +138,14 @@ export type Database = {
           status: string
           updated_at: string
           valor_total: number
+          wallet_discount: number | null
         }
         Insert: {
+          cashback_amount?: number | null
           cliente_email: string
           cliente_nome: string
           cliente_telefone?: string | null
+          company_id?: string | null
           created_at?: string
           data_fim: string
           data_inicio: string
@@ -105,11 +155,14 @@ export type Database = {
           status?: string
           updated_at?: string
           valor_total: number
+          wallet_discount?: number | null
         }
         Update: {
+          cashback_amount?: number | null
           cliente_email?: string
           cliente_nome?: string
           cliente_telefone?: string | null
+          company_id?: string | null
           created_at?: string
           data_fim?: string
           data_inicio?: string
@@ -119,8 +172,16 @@ export type Database = {
           status?: string
           updated_at?: string
           valor_total?: number
+          wallet_discount?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "reservas_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "reservas_produto_id_fkey"
             columns: ["produto_id"]
@@ -151,11 +212,66 @@ export type Database = {
         }
         Relationships: []
       }
+      wallet_transactions: {
+        Row: {
+          amount: number
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          reserva_id: string | null
+          status: Database["public"]["Enums"]["wallet_transaction_status"]
+          type: Database["public"]["Enums"]["wallet_transaction_type"]
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          reserva_id?: string | null
+          status?: Database["public"]["Enums"]["wallet_transaction_status"]
+          type: Database["public"]["Enums"]["wallet_transaction_type"]
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          reserva_id?: string | null
+          status?: Database["public"]["Enums"]["wallet_transaction_status"]
+          type?: Database["public"]["Enums"]["wallet_transaction_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_transactions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_transactions_reserva_id_fkey"
+            columns: ["reserva_id"]
+            isOneToOne: false
+            referencedRelation: "reservas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      get_cashback_percentage: {
+        Args: { tier_value: Database["public"]["Enums"]["company_tier"] }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -167,6 +283,9 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      company_tier: "silver" | "gold" | "platinum"
+      wallet_transaction_status: "pending" | "available" | "used" | "cancelled"
+      wallet_transaction_type: "earn" | "burn" | "adjustment"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -295,6 +414,9 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      company_tier: ["silver", "gold", "platinum"],
+      wallet_transaction_status: ["pending", "available", "used", "cancelled"],
+      wallet_transaction_type: ["earn", "burn", "adjustment"],
     },
   },
 } as const

@@ -11,6 +11,7 @@ import ProdutoDetalhes from "@/pages/ProdutoDetalhes";
 import MinhasReservas from "@/pages/MinhasReservas";
 import PlanosMensais from "@/pages/PlanosMensais";
 import Configuracoes from "@/pages/Configuracoes";
+import Wallet from "@/pages/Wallet";
 import Auth from "@/pages/Auth";
 import NotFound from "@/pages/NotFound";
 
@@ -37,6 +38,7 @@ function App() {
                 <Route path="/produto/:id" element={<ProdutoDetalhes />} />
                 <Route path="/planos" element={<PlanosMensais />} />
                 <Route path="/minhas-reservas" element={<MinhasReservas />} />
+                <Route path="/wallet" element={<Wallet />} />
                 <Route path="/configuracoes" element={<Configuracoes />} />
               </Route>
 

@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Package, Calendar, Settings, Menu, X, LogIn, CreditCard } from 'lucide-react';
+import { Package, Calendar, Settings, Menu, X, LogIn, CreditCard, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import logoExs from '@/assets/logo-exs.png';
@@ -11,7 +11,8 @@ const Header = () => {
   const navItems = [
     { to: '/', label: 'Produtos', icon: Package },
     { to: '/planos', label: 'Planos Mensais', icon: CreditCard },
-    { to: '/minhas-reservas', label: 'Minhas Reservas', icon: Calendar }
+    { to: '/minhas-reservas', label: 'Minhas Reservas', icon: Calendar },
+    { to: '/wallet', label: 'EXS Wallet', icon: Wallet }
   ];
 
   const isActive = (path: string) => location.pathname === path;
