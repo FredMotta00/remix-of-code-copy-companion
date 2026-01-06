@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -21,9 +21,18 @@ import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminReservas from "@/pages/admin/AdminReservas";
 import AdminProdutos from "@/pages/admin/AdminProdutos";
 
+// 👇 IMPORTAÇÃO DO SCRIPT DE SEED (Certifique-se que o caminho está correto)
+import { seedDatabase } from "./lib/utils/seed";
+
 const queryClient = new QueryClient();
 
 function App() {
+  
+  // 👇 ISSO VAI RODAR O SCRIPT QUANDO O SITE ABRIR
+  useEffect(() => {
+    seedDatabase();
+  }, []);
+
   return (
     <React.StrictMode>
       <QueryClientProvider client={queryClient}>

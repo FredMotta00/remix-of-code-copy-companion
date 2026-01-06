@@ -1,23 +1,32 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { Produto, TIER_CONFIG } from '@/lib/database.types';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useWallet } from '@/hooks/useWallet';
-import { UseWalletToggle } from '@/components/wallet/UseWalletToggle';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Loader2, CheckCircle2, Calendar, User, Mail, Phone, FileText, CreditCard, Sparkles } from 'lucide-react';
+import { Loader2, CheckCircle2, Calendar, User, Mail, Phone, FileText, CreditCard } from 'lucide-react';
+
+// 👇 Firebase Imports
+import { db, auth } from '@/lib/firebase';
+import { collection, addDoc } from 'firebase/firestore';
+
+// 👇 Simplified Interface for the Product
+interface ProdutoSimples {
+  id: string;
+  nome: string;
+  imagem: string | null;
+  preco_diario: number;
+  descricao?: string; // Added optional description
+}
 
 interface ReservaConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  produto: Produto;
+  produto: ProdutoSimples;
   dataInicio: Date;
   dataFim: Date;
   diasLocacao: number;
@@ -38,7 +47,7 @@ export const ReservaConfirmDialog = ({
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [useWalletBalance, setUseWalletBalance] = useState(false);
+  
   const [formData, setFormData] = useState({
     nome: '',
     email: '',
@@ -46,26 +55,16 @@ export const ReservaConfirmDialog = ({
     observacoes: ''
   });
 
-  const { 
-    company, 
-    isAuthenticated, 
-    addCashback, 
-    useBalance, 
-    updateAnnualTotal,
-    calculateCashback 
-  } = useWallet();
-
-  // Calculate values
-  const walletDiscount = useWalletBalance && company 
-    ? Math.min(company.wallet_balance, valorTotal) 
-    : 0;
-  const valorFinal = valorTotal - walletDiscount;
-  const cashbackAmount = company 
-    ? calculateCashback(valorFinal, company.tier) 
-    : 0;
-  const cashbackPercentage = company 
-    ? TIER_CONFIG[company.tier].cashbackPercentage * 100 
-    : 0;
+  // 👇 Auto-fill user data if logged in
+  useEffect(() => {
+    if (open && auth.currentUser) {
+      setFormData(prev => ({
+        ...prev,
+        email: auth.currentUser?.email || '',
+        // In the future, we can fetch name/phone from the 'users' collection here
+      }));
+    }
+  }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,65 +78,64 @@ export const ReservaConfirmDialog = ({
       return;
     }
 
+    // Check if user is logged in (optional, but good practice)
+    const user = auth.currentUser;
+    if (!user) {
+       toast({
+        title: 'Login necessário',
+        description: 'Por favor, faça login para continuar.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // Create reservation
-      const { data: reserva, error } = await supabase.from('reservas').insert({
-        produto_id: produto.id,
-        company_id: company?.id || null,
-        cliente_nome: formData.nome,
-        cliente_email: formData.email,
-        cliente_telefone: formData.telefone || null,
-        data_inicio: format(dataInicio, 'yyyy-MM-dd'),
-        data_fim: format(dataFim, 'yyyy-MM-dd'),
-        valor_total: valorFinal,
-        cashback_amount: cashbackAmount,
-        wallet_discount: walletDiscount,
-        observacoes: formData.observacoes || null,
-        status: 'pendente'
-      }).select().single();
-
-      if (error) throw error;
-
-      // If user has company and reservation was created successfully
-      if (company && reserva) {
-        // Use wallet balance if applicable
-        if (useWalletBalance && walletDiscount > 0) {
-          await useBalance({
-            reservaId: reserva.id,
-            amount: walletDiscount,
-            description: `Desconto na reserva de ${produto.nome}`
-          });
-        }
-
-        // Add cashback transaction (pending)
-        if (cashbackAmount > 0) {
-          await addCashback({
-            reservaId: reserva.id,
-            amount: cashbackAmount,
-            description: `Cashback ${cashbackPercentage}% - ${produto.nome}`
-          });
-        }
-
-        // Update company's annual rental total
-        await updateAnnualTotal(valorFinal);
-      }
+      // 👇 SAVING TO FIREBASE (Collection 'orders')
+      await addDoc(collection(db, 'orders'), {
+        userId: user.uid,
+        userEmail: user.email,
+        customerDetails: {
+            name: formData.nome,
+            email: formData.email,
+            phone: formData.telefone,
+            notes: formData.observacoes
+        },
+        items: [
+          {
+            productId: produto.id,
+            productName: produto.nome,
+            productImage: produto.imagem,
+            dailyRate: Number(produto.preco_diario),
+            type: "rent"
+          }
+        ],
+        dates: {
+          start: dataInicio.toISOString(),
+          end: dataFim.toISOString(),
+          days: diasLocacao
+        },
+        financial: {
+          totalAmount: valorTotal,
+          currency: "BRL",
+          status: "pending_payment"
+        },
+        status: "pending_approval", // Order status
+        createdAt: new Date().toISOString()
+      });
 
       setSuccess(true);
       
       setTimeout(() => {
         toast({
-          title: 'Reserva solicitada com sucesso!',
-          description: cashbackAmount > 0 
-            ? `Você receberá R$ ${cashbackAmount.toFixed(2)} de cashback após a devolução.`
-            : 'Você receberá uma confirmação por email em breve.'
+          title: 'Solicitação enviada!',
+          description: 'Você receberá a confirmação por email em breve.'
         });
         onSuccess();
         onOpenChange(false);
         setSuccess(false);
         setFormData({ nome: '', email: '', telefone: '', observacoes: '' });
-        setUseWalletBalance(false);
       }, 2000);
 
     } catch (error) {
@@ -156,23 +154,15 @@ export const ReservaConfirmDialog = ({
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-md">
-          <div className="flex flex-col items-center justify-center py-10 animate-scale-in">
-            <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
-              <CheckCircle2 className="h-10 w-10 text-primary animate-bounce" />
+          <div className="flex flex-col items-center justify-center py-10 animate-in zoom-in-50 duration-300">
+            <div className="h-20 w-20 rounded-full bg-green-100 flex items-center justify-center mb-6">
+              <CheckCircle2 className="h-10 w-10 text-green-600 animate-bounce" />
             </div>
-            <h3 className="text-xl font-bold text-foreground mb-2">Reserva Confirmada!</h3>
-            <p className="text-muted-foreground text-center">
-              Sua solicitação foi enviada com sucesso.<br />
-              Aguarde a confirmação por email.
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Solicitação Enviada!</h3>
+            <p className="text-slate-500 text-center">
+              Recebemos seu pedido de reserva.<br />
+              Nossa equipe entrará em contato em breve.
             </p>
-            {cashbackAmount > 0 && (
-              <div className="mt-4 p-3 bg-primary/10 rounded-lg text-center">
-                <p className="text-sm text-primary font-medium flex items-center justify-center gap-1">
-                  <Sparkles className="h-4 w-4" />
-                  Cashback de R$ {cashbackAmount.toFixed(2)} pendente
-                </p>
-              </div>
-            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -185,69 +175,57 @@ export const ReservaConfirmDialog = ({
         <DialogHeader>
           <DialogTitle className="text-xl">Confirmar Reserva</DialogTitle>
           <DialogDescription>
-            Preencha seus dados para finalizar a reserva do equipamento.
+            Preencha seus dados para finalizar a solicitação.
           </DialogDescription>
         </DialogHeader>
 
         {/* Resumo do Produto */}
-        <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+        <div className="bg-slate-50 rounded-lg p-4 space-y-3 border border-slate-100">
           <div className="flex items-start gap-4">
-            <img 
-              src={produto.imagem || '/placeholder.svg'} 
-              alt={produto.nome}
-              className="w-16 h-16 rounded-lg object-cover"
-            />
+            {produto.imagem ? (
+                 <img 
+                 src={produto.imagem} 
+                 alt={produto.nome}
+                 className="w-16 h-16 rounded-lg object-cover bg-white"
+               />
+            ) : (
+                <div className="w-16 h-16 rounded-lg bg-slate-200 flex items-center justify-center text-xs text-slate-500">Sem foto</div>
+            )}
+           
             <div className="flex-1">
-              <h4 className="font-semibold text-foreground">{produto.nome}</h4>
-              <p className="text-sm text-muted-foreground line-clamp-1">{produto.descricao}</p>
+              <h4 className="font-semibold text-slate-900">{produto.nome}</h4>
+              <p className="text-sm text-slate-500 line-clamp-1">{produto.descricao || "Sem descrição"}</p>
             </div>
           </div>
           
           <Separator />
           
           <div className="grid grid-cols-2 gap-4 text-sm">
-            <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="flex items-center gap-2 text-slate-500">
               <Calendar className="h-4 w-4" />
-              <span>Início: <strong className="text-foreground">{format(dataInicio, "dd 'de' MMM", { locale: ptBR })}</strong></span>
+              <span>Início: <strong className="text-slate-900">{format(dataInicio, "dd 'de' MMM", { locale: ptBR })}</strong></span>
             </div>
-            <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="flex items-center gap-2 text-slate-500">
               <Calendar className="h-4 w-4" />
-              <span>Fim: <strong className="text-foreground">{format(dataFim, "dd 'de' MMM", { locale: ptBR })}</strong></span>
+              <span>Fim: <strong className="text-slate-900">{format(dataFim, "dd 'de' MMM", { locale: ptBR })}</strong></span>
             </div>
           </div>
 
-          <div className="space-y-2 pt-2 border-t border-border">
+          <div className="space-y-2 pt-2 border-t border-slate-200">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">{diasLocacao} dias × R$ {Number(produto.preco_diario).toLocaleString('pt-BR')}</span>
-              <span className="text-foreground">R$ {valorTotal.toLocaleString('pt-BR')}</span>
+              <span className="text-slate-500">{diasLocacao} {diasLocacao === 1 ? 'dia' : 'dias'} × R$ {Number(produto.preco_diario).toLocaleString('pt-BR')}</span>
+              <span className="text-slate-900">R$ {valorTotal.toLocaleString('pt-BR')}</span>
             </div>
             
-            {walletDiscount > 0 && (
-              <div className="flex items-center justify-between text-sm text-green-600">
-                <span>Desconto EXS Wallet</span>
-                <span>- R$ {walletDiscount.toLocaleString('pt-BR')}</span>
-              </div>
-            )}
-            
-            <div className="flex items-center justify-between pt-2 border-t border-border">
+            <div className="flex items-center justify-between pt-2 border-t border-slate-200">
               <div className="flex items-center gap-2">
-                <CreditCard className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium">Total</span>
+                <CreditCard className="h-4 w-4 text-slate-500" />
+                <span className="font-medium text-slate-900">Total Estimado</span>
               </div>
               <span className="text-lg font-bold text-primary">
-                R$ {valorFinal.toLocaleString('pt-BR')}
+                R$ {valorTotal.toLocaleString('pt-BR')}
               </span>
             </div>
-            
-            {cashbackAmount > 0 && isAuthenticated && company && (
-              <div className="flex items-center justify-between text-sm bg-primary/5 p-2 rounded-lg">
-                <span className="text-primary flex items-center gap-1">
-                  <Sparkles className="h-3 w-3" />
-                  Cashback ({cashbackPercentage}%)
-                </span>
-                <span className="font-medium text-primary">+ R$ {cashbackAmount.toFixed(2)}</span>
-              </div>
-            )}
           </div>
         </div>
 
@@ -255,7 +233,7 @@ export const ReservaConfirmDialog = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="nome" className="flex items-center gap-2">
-              <User className="h-4 w-4 text-muted-foreground" />
+              <User className="h-4 w-4 text-slate-400" />
               Nome completo *
             </Label>
             <Input
@@ -269,7 +247,7 @@ export const ReservaConfirmDialog = ({
 
           <div className="space-y-2">
             <Label htmlFor="email" className="flex items-center gap-2">
-              <Mail className="h-4 w-4 text-muted-foreground" />
+              <Mail className="h-4 w-4 text-slate-400" />
               Email *
             </Label>
             <Input
@@ -282,19 +260,9 @@ export const ReservaConfirmDialog = ({
             />
           </div>
 
-          {/* Wallet Toggle - only show if user is authenticated and has company */}
-          {isAuthenticated && company && (
-            <UseWalletToggle
-              company={company}
-              useWallet={useWalletBalance}
-              onToggle={setUseWalletBalance}
-              maxDiscount={valorTotal}
-            />
-          )}
-
           <div className="space-y-2">
             <Label htmlFor="telefone" className="flex items-center gap-2">
-              <Phone className="h-4 w-4 text-muted-foreground" />
+              <Phone className="h-4 w-4 text-slate-400" />
               Telefone
             </Label>
             <Input
@@ -307,7 +275,7 @@ export const ReservaConfirmDialog = ({
 
           <div className="space-y-2">
             <Label htmlFor="observacoes" className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-muted-foreground" />
+              <FileText className="h-4 w-4 text-slate-400" />
               Observações
             </Label>
             <Textarea
@@ -340,7 +308,7 @@ export const ReservaConfirmDialog = ({
                   Processando...
                 </>
               ) : (
-                'Confirmar Reserva'
+                'Enviar Solicitação'
               )}
             </Button>
           </div>

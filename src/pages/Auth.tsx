@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+// 👇 Trocamos o cliente do Supabase pelo nosso do Firebase
+import { auth, db } from '@/lib/firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,50 +30,38 @@ const Auth = () => {
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
 
+  // 👇 Verificação de sessão (Adaptado para Firebase)
   useEffect(() => {
-    // Check if user is already logged in
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
         navigate('/');
       }
     });
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        navigate('/');
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    return () => unsubscribe();
   }, [navigate]);
 
+  // 👇 Lógica de Login (Firebase Auth)
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: loginEmail,
-        password: loginPassword,
-      });
-
-      if (error) {
-        if (error.message.includes('Invalid login credentials')) {
-          toast.error('E-mail ou senha incorretos');
-        } else {
-          toast.error(error.message);
-        }
-      } else {
-        toast.success('Login realizado com sucesso!');
-        navigate('/');
-      }
+      await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
+      toast.success('Login realizado com sucesso!');
+      navigate('/');
     } catch (error: any) {
-      toast.error('Erro ao fazer login');
+      console.error(error);
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        toast.error('E-mail ou senha incorretos');
+      } else {
+        toast.error('Erro ao fazer login. Tente novamente.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // 👇 Lógica de Cadastro (Firebase Auth + Firestore)
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -86,37 +78,37 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const redirectUrl = `${window.location.origin}/`;
+      // 1. Cria o usuário na Autenticação
+      const userCredential = await createUserWithEmailAndPassword(auth, signupEmail, signupPassword);
+      const user = userCredential.user;
       
-      const { error } = await supabase.auth.signUp({
+      // 2. Salva os dados extras (Nome, CPF, Telefone) no Banco de Dados
+      // Diferente do Supabase, o Firebase Auth não guarda esses dados nativamente, então usamos a coleção 'users'
+      await setDoc(doc(db, "users", user.uid), {
+        uid: user.uid,
         email: signupEmail,
-        password: signupPassword,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            full_name: signupNome,
-            telefone: signupTelefone,
-            documento: signupDocumento,
-          }
-        }
+        fullName: signupNome,
+        phone: signupTelefone,
+        document: signupDocumento,
+        role: "user", // Padrão
+        createdAt: new Date().toISOString()
       });
 
-      if (error) {
-        if (error.message.includes('already registered')) {
-          toast.error('Este e-mail já está cadastrado');
-        } else {
-          toast.error(error.message);
-        }
-      } else {
-        toast.success('Cadastro realizado! Verifique seu e-mail para confirmar.');
-      }
+      toast.success('Cadastro realizado com sucesso!');
+      // O onAuthStateChanged vai redirecionar automaticamente
     } catch (error: any) {
-      toast.error('Erro ao fazer cadastro');
+      console.error(error);
+      if (error.code === 'auth/email-already-in-use') {
+        toast.error('Este e-mail já está cadastrado');
+      } else {
+        toast.error('Erro ao criar conta: ' + error.message);
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // 👇 Funções utilitárias mantidas idênticas
   const formatDocumento = (value: string) => {
     const numbers = value.replace(/\D/g, '');
     if (numbers.length <= 11) {

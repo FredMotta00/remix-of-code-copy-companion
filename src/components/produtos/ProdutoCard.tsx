@@ -1,77 +1,102 @@
-import { Link } from 'react-router-dom';
-import { Produto } from '@/lib/database.types';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Calendar, ArrowRight, CheckCircle, Clock, Wrench } from 'lucide-react';
+import { Link } from "react-router-dom";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { CheckCircle2, AlertCircle } from "lucide-react";
 
-interface ProdutoCardProps {
-  produto: Produto;
+// 👇 DEFINIMOS AQUI O QUE O CARD ACEITA RECEBER
+// O '?' significa que o campo não é obrigatório (isso resolve seu erro vermelho!)
+export interface ProdutoProps {
+  produto: {
+    id: string;
+    nome: string;
+    descricao: string;
+    imagem: string | null;
+    preco_diario: number;
+    status: string;
+    especificacoes?: string[]; // O erro sumirá por causa desse '?'
+  };
 }
 
-const statusConfig = {
-  disponivel: { 
-    label: 'Disponível', 
-    variant: 'default' as const,
-    icon: CheckCircle,
-    className: 'bg-primary/10 text-primary border-primary/20'
-  },
-  alugado: { 
-    label: 'Alugado', 
-    variant: 'secondary' as const,
-    icon: Clock,
-    className: 'bg-warning/10 text-warning border-warning/20'
-  },
-  manutencao: { 
-    label: 'Manutenção', 
-    variant: 'destructive' as const,
-    icon: Wrench,
-    className: 'bg-destructive/10 text-destructive border-destructive/20'
-  }
-};
+const ProdutoCard = ({ produto }: ProdutoProps) => {
+  // Função para mudar a cor da bolinha de status
+  const getStatusInfo = (status: string) => {
+    switch (status) {
+      case "available":
+      case "disponivel":
+        return { color: "bg-green-500", label: "Disponível", icon: CheckCircle2 };
+      case "rented":
+      case "alugado":
+        return { color: "bg-amber-500", label: "Alugado", icon: AlertCircle };
+      case "maintenance":
+      case "manutencao":
+        return { color: "bg-red-500", label: "Manutenção", icon: AlertCircle };
+      default:
+        return { color: "bg-slate-500", label: "Indisponível", icon: AlertCircle };
+    }
+  };
 
-const ProdutoCard = ({ produto }: ProdutoCardProps) => {
-  const status = statusConfig[produto.status];
-  const StatusIcon = status.icon;
+  const statusInfo = getStatusInfo(produto.status);
+  const Icon = statusInfo.icon;
 
   return (
-    <Card className="group overflow-hidden border-border/50 hover:border-primary/30 transition-all duration-300 hover:shadow-lg gradient-card">
-      <div className="aspect-[16/10] overflow-hidden bg-muted relative">
-        <img
-          src={produto.imagem || '/placeholder.svg'}
-          alt={produto.nome}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-foreground/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-        <Badge 
-          className={`absolute top-3 right-3 gap-1.5 ${status.className} border backdrop-blur-sm`}
-        >
-          <StatusIcon className="h-3 w-3" />
-          {status.label}
-        </Badge>
+    <Card className="h-full flex flex-col overflow-hidden hover:shadow-lg transition-all duration-300 border-slate-200 bg-white group">
+      {/* Imagem do Produto */}
+      <div className="relative h-48 bg-slate-100 overflow-hidden">
+        {produto.imagem ? (
+          <img
+            src={produto.imagem}
+            alt={produto.nome}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-slate-400">
+            <span className="text-sm">Sem imagem</span>
+          </div>
+        )}
+        
+        {/* Etiqueta de Status (Canto Superior) */}
+        <div className="absolute top-2 right-2">
+          <Badge className={`${statusInfo.color} text-white border-none shadow-sm`}>
+            <Icon className="w-3 h-3 mr-1" />
+            {statusInfo.label}
+          </Badge>
+        </div>
       </div>
-      
-      <CardContent className="p-5">
-        <h3 className="font-bold text-lg text-foreground mb-2 group-hover:text-primary transition-colors">
+
+      {/* Título e Descrição */}
+      <CardContent className="flex-1 p-4 space-y-2">
+        <h3 className="font-bold text-lg text-slate-900 line-clamp-1" title={produto.nome}>
           {produto.nome}
         </h3>
-        <p className="text-sm text-muted-foreground line-clamp-2 mb-4 leading-relaxed">
+        <p className="text-sm text-slate-500 line-clamp-2 min-h-[2.5rem]">
           {produto.descricao}
         </p>
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-2xl font-bold text-gradient">
-            R$ {Number(produto.preco_diario).toLocaleString('pt-BR')}
-          </span>
-          <span className="text-sm text-muted-foreground font-medium">/dia</span>
-        </div>
+        
+        {/* Especificações Técnicas (Tags) */}
+        {produto.especificacoes && produto.especificacoes.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2">
+            {produto.especificacoes.slice(0, 2).map((spec, i) => (
+              <span key={i} className="text-[10px] px-2 py-1 bg-slate-100 rounded text-slate-600 font-medium">
+                {spec}
+              </span>
+            ))}
+          </div>
+        )}
       </CardContent>
 
-      <CardFooter className="p-5 pt-0">
-        <Link to={`/produto/${produto.id}`} className="w-full">
-          <Button className="w-full gap-2 group/btn shadow-sm hover:shadow-md transition-all">
-            <Calendar className="h-4 w-4" />
-            Ver Disponibilidade
-            <ArrowRight className="h-4 w-4 opacity-0 -ml-6 group-hover/btn:opacity-100 group-hover/btn:ml-0 transition-all duration-200" />
+      {/* Preço e Botão */}
+      <CardFooter className="p-4 pt-0 flex items-center justify-between border-t border-slate-100 mt-auto bg-slate-50/50">
+        <div className="flex flex-col mt-3">
+          <span className="text-xs text-slate-500 font-medium">Diária a partir de</span>
+          <span className="text-lg font-bold text-primary">
+            R$ {produto.preco_diario.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+          </span>
+        </div>
+        
+        <Link to={`/produto/${produto.id}`} className="mt-3">
+          <Button size="sm" className="shadow-sm hover:shadow-md transition-shadow">
+            Ver Detalhes
           </Button>
         </Link>
       </CardFooter>

@@ -4,8 +4,7 @@ import { Search, Briefcase, Loader2, Zap, Shield, Clock, Headphones, GraduationC
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import ProdutoCard from '@/components/produtos/ProdutoCard';
-import { supabase } from '@/integrations/supabase/client';
-import { Produto } from '@/lib/database.types';
+import { Link } from 'react-router-dom';
 import {
   Carousel,
   CarouselContent,
@@ -14,8 +13,24 @@ import {
   CarouselPrevious,
 } from '@/components/ui/carousel';
 import { Card, CardContent } from '@/components/ui/card';
-import { Link } from 'react-router-dom';
 import Autoplay from 'embla-carousel-autoplay';
+
+// 👇 NOVAS IMPORTAÇÕES DO FIREBASE
+import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
+
+export interface Produto {
+  id: string;
+  nome: string;
+  descricao: string;
+  imagem: string | null;
+  preco_diario: number;
+  status: string;
+  especificacoes?: string[];
+  created_at?: string;
+  updated_at?: string; 
+}
 
 const features = [{
   icon: Shield,
@@ -38,20 +53,38 @@ const features = [{
 const Home = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('todos');
+
   const {
     data: produtos = [],
     isLoading
   } = useQuery({
     queryKey: ['produtos'],
     queryFn: async () => {
-      const {
-        data,
-        error
-      } = await supabase.from('produtos').select('*').order('created_at', {
-        ascending: false
+      // 👇 LÓGICA NOVA: Buscando do Firebase (Inventory)
+      const produtosRef = collection(db, 'inventory');
+      // Tenta ordenar, se falhar por falta de índice, busca sem ordem
+      const q = query(produtosRef); 
+      
+      const querySnapshot = await getDocs(q);
+
+      // 👇 O PULO DO GATO: Mapeando (Traduzindo) Firebase -> Seu Site
+      const produtosFormatados: Produto[] = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        // ... dentro do return produtosFormatados ...
+return {
+  id: doc.id,
+  nome: data.name || "Produto sem nome",
+  descricao: data.description || "",
+  imagem: data.images && data.images.length > 0 ? data.images[0] : null,
+  preco_diario: data.commercial?.dailyRate || 0,
+  status: data.status || 'available',
+  especificacoes: data.technical ? Object.values(data.technical).map(String) : [],
+  created_at: data.createdAt?.toString(),
+  updated_at: new Date().toISOString() // <--- ADICIONE ESTA LINHA (Data fictícia para passar no erro)
+};
       });
-      if (error) throw error;
-      return data as Produto[];
+
+      return produtosFormatados;
     }
   });
 
