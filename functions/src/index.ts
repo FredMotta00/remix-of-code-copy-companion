@@ -1,5 +1,5 @@
 import * as logger from "firebase-functions/logger";
-import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { onCall, HttpsError, onRequest } from "firebase-functions/v2/https";
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
 import axios from "axios";
@@ -298,3 +298,129 @@ export const criarCobrancaAsaas = onCall({
     }
 });
 
+// Adicionar ao final do arquivo functions/src/index.ts
+
+/**
+ * Webhook para receber notificações do Asaas
+ * URL será: https://[PROJECT_ID].cloudfunctions.net/handleAsaasWebhook
+ */
+export const handleAsaasWebhook = onRequest(async (req, res) => {
+    // 1. Aceitar apenas POST
+    if (req.method !== "POST") {
+        res.status(405).send("Method Not Allowed");
+        return;
+    }
+
+    try {
+        const body = req.body;
+        const event = body.event;
+
+        logger.info("🔔 Webhook recebido do Asaas:", {
+            event,
+            paymentId: body.payment?.id
+        });
+
+        // 2. Validar estrutura básica
+        if (!event || !body.payment) {
+            logger.warn("⚠️ Webhook inválido: faltando event ou payment");
+            res.status(400).send("Invalid webhook payload");
+            return;
+        }
+
+        const paymentId = body.payment.id;
+
+        // 3. Mapear eventos Asaas para status de pedidos
+        let newStatus: string | null = null;
+
+        switch (event) {
+            case "PAYMENT_CONFIRMED":
+                newStatus = "payment_confirmed";
+                logger.info("✅ Pagamento confirmado!");
+                break;
+            case "PAYMENT_RECEIVED":
+                newStatus = "payment_received";
+                logger.info("💰 Pagamento recebido!");
+                break;
+            case "PAYMENT_OVERDUE":
+                newStatus = "overdue";
+                logger.warn("⏰ Pagamento vencido");
+                break;
+            case "PAYMENT_DELETED":
+            case "PAYMENT_REFUND_REQUESTED":
+                newStatus = "cancelled";
+                logger.info("❌ Pagamento cancelado");
+                break;
+            case "PAYMENT_REFUNDED":
+                newStatus = "refunded";
+                logger.info("↩️ Pagamento estornado");
+                break;
+            default:
+                logger.info(`ℹ️ Evento não tratado: ${event}`);
+                res.status(200).send("Event ignored");
+                return;
+        }
+
+        // 4. Buscar pedido no Firestore pelo asaasId
+        const db = getDb();
+        const ordersRef = db.collection("orders");
+        const querySnapshot = await ordersRef
+            .where("payment.asaasId", "==", paymentId)
+            .limit(1)
+            .get();
+
+        if (querySnapshot.empty) {
+            logger.warn(`⚠️ Pedido não encontrado para payment ID: ${paymentId}`);
+            res.status(404).send("Order not found");
+            return;
+        }
+
+        // 5. Atualizar status do pedido
+        const orderDoc = querySnapshot.docs[0];
+        await orderDoc.ref.update({
+            status: newStatus,
+            paymentStatus: event,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            lastWebhookEvent: {
+                event,
+                receivedAt: admin.firestore.FieldValue.serverTimestamp(),
+                paymentData: body.payment
+            }
+        });
+
+        logger.info(`✅ Pedido ${orderDoc.id} atualizado para status: ${newStatus}`);
+
+        // 6. Se pagamento confirmado, atualizar reservas vinculadas
+        if (newStatus === "payment_confirmed" || newStatus === "payment_received") {
+            const orderData = orderDoc.data();
+            if (orderData.items) {
+                const reservasRef = db.collection("reservas");
+                const reservasSnapshot = await reservasRef
+                    .where("orderId", "==", orderDoc.id)
+                    .get();
+
+                const updatePromises = reservasSnapshot.docs.map(doc =>
+                    doc.ref.update({
+                        status: "confirmed",
+                        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                    })
+                );
+
+                await Promise.all(updatePromises);
+                logger.info(`✅ ${reservasSnapshot.size} reserva(s) confirmada(s)`);
+            }
+        }
+
+        res.status(200).send({
+            success: true,
+            orderId: orderDoc.id,
+            newStatus
+        });
+
+    } catch (error) {
+        logger.error("❌ Erro ao processar webhook:", error);
+        res.status(500).send({
+            error: "Internal server error",
+            message: String(error)
+        });
+    }
+});
