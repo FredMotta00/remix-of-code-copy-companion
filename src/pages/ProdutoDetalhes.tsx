@@ -92,25 +92,29 @@ const ProdutoDetalhes = () => {
     queryKey: ['produto', id],
     queryFn: async () => {
       if (!id) throw new Error("ID não fornecido");
-      const docRef = doc(db, 'inventory', id);
+      const docRef = doc(db, 'rental_equipments', id);  // BOS collection
       const docSnap = await getDoc(docRef);
 
       if (!docSnap.exists()) return null;
 
       const data = docSnap.data();
 
+      // Mapeamento BOS → EXS
       return {
         id: docSnap.id,
-        nome: data.nome || data.name,
-        descricao: data.descricao || data.description,
-        imagem: data.imagem || (data.images?.[0] || null),
-        preco_diario: data.commercial?.dailyRate || data.preco_diario || 0,
-        status: data.status,
-        especificacoes: data.technical?.specs
-          ? Object.entries(data.technical.specs).map(([key, value]) => `${key}: ${value}`)
-          : data.especificacoes || [],
-        commercial: data.commercial,
-        technical: data.technical
+        nome: data.name || "Equipamento",  // BOS usa 'name'
+        descricao: data.description || data.notes || "",
+        imagem: data.accessories?.[0]?.imageUrl || null,  // Imagem do primeiro acessório
+        preco_diario: data.rentPrice || 0,  // BOS usa 'rentPrice'
+        status: data.status === 'AVAILABLE' ? 'available' : 'unavailable',
+        especificacoes: data.specifications || [],
+        commercial: {
+          isForSale: false,
+          salePrice: null,
+          dailyRate: data.rentPrice || 0,
+          monthlyRate: data.monthlyRate || null
+        },
+        technical: data.technical || {}
       } as ProdutoDetalhe;
     },
     enabled: !!id

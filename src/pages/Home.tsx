@@ -84,36 +84,32 @@ const Home = () => {
 
       const produtosFormatados: Produto[] = querySnapshot.docs.map(doc => {
         const data = doc.data();
-
-        // BOS rental_equipments tem accessories array
         const accessories = data.accessories || [];
-        const firstAccessory = accessories[0] || {};
 
-        // Tentar pegar preço de diferentes fontes possíveis no BOS
-        const dailyRate = data.rental?.dailyRate ||
-          data.pricing?.daily ||
-          data.dailyRate ||
-          data.preco_diario ||
-          100; // Fallback
+        // NOME do PRODUTO: campo 'name' (ex: "UTS 500 - UNIVERSAL TEST SET")
+        const nome = data.name || "Equipamento";
 
-        // Status: BOS pode usar 'active' ao invés de 'available'
-        let mappedStatus = data.status || 'available';
-        if (mappedStatus === 'active') mappedStatus = 'available';
+        // PREÇO do KIT
+        const dailyRate = data.rentPrice || 0;
+
+        // STATUS
+        const status = data.status === 'AVAILABLE' ? 'available' : 'unavailable';
 
         return {
           id: doc.id,
-          nome: firstAccessory.name || data.name || data.nome || "Equipamento",
-          descricao: data.description || data.descricao || data.notes || "",
-          imagem: firstAccessory.imageUrl || data.imageUrl || data.imagem || null,
+          nome: nome,
+          descricao: data.description || "",
+          imagem: accessories[0]?.imageUrl || null,
           preco_diario: dailyRate,
-          preco_mensal: data.rental?.monthlyRate || data.pricing?.monthly || null,
-          status: mappedStatus,
-          especificacoes: data.specifications || data.especificacoes || [],
-          created_at: data.createdAt?.toString() || data.created_at || new Date().toISOString(),
+          preco_mensal: data.monthlyRate || null,
+          status: status,
+          especificacoes: data.specifications || [],
+          created_at: data.createdAt?.toString() || new Date().toISOString(),
           category: data.category || '',
           updated_at: new Date().toISOString()
         };
       });
+
 
       return produtosFormatados;
     }
