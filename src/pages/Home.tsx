@@ -84,18 +84,32 @@ const Home = () => {
 
       const produtosFormatados: Produto[] = querySnapshot.docs.map(doc => {
         const data = doc.data();
+
+        // BOS rental_equipments tem accessories array
+        const accessories = data.accessories || [];
+        const firstAccessory = accessories[0] || {};
+
+        // Tentar pegar preço de diferentes fontes possíveis no BOS
+        const dailyRate = data.rental?.dailyRate ||
+          data.pricing?.daily ||
+          data.dailyRate ||
+          data.preco_diario ||
+          100; // Fallback
+
+        // Status: BOS pode usar 'active' ao invés de 'available'
+        let mappedStatus = data.status || 'available';
+        if (mappedStatus === 'active') mappedStatus = 'available';
+
         return {
           id: doc.id,
-          nome: data.nome || data.name || "Produto sem nome",
-          descricao: data.descricao || data.description || "",
-          imagem: data.imagem || (data.images && data.images.length > 0 ? data.images[0] : null),
-          preco_diario: data.commercial?.dailyRate || data.preco_diario || 0,
-          preco_mensal: data.commercial?.monthlyRate || null,
-          status: data.status || 'available',
-          especificacoes: data.technical?.specs
-            ? Object.entries(data.technical.specs).map(([key, value]) => `${key}: ${value}`)
-            : data.especificacoes || [],
-          created_at: data.created_at || data.createdAt?.toString(),
+          nome: firstAccessory.name || data.name || data.nome || "Equipamento",
+          descricao: data.description || data.descricao || data.notes || "",
+          imagem: firstAccessory.imageUrl || data.imageUrl || data.imagem || null,
+          preco_diario: dailyRate,
+          preco_mensal: data.rental?.monthlyRate || data.pricing?.monthly || null,
+          status: mappedStatus,
+          especificacoes: data.specifications || data.especificacoes || [],
+          created_at: data.createdAt?.toString() || data.created_at || new Date().toISOString(),
           category: data.category || '',
           updated_at: new Date().toISOString()
         };
