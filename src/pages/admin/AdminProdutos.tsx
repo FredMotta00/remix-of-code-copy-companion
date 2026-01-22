@@ -130,7 +130,7 @@ export default function AdminProdutos() {
   const { data: produtos, isLoading } = useQuery({
     queryKey: ['admin-produtos'],
     queryFn: async () => {
-      const querySnapshot = await getDocs(collection(db, 'products'));
+      const querySnapshot = await getDocs(collection(db, 'rental_equipments'));
       return querySnapshot.docs.map(doc => {
         const data = doc.data();
         // Helper to format specs
@@ -234,7 +234,7 @@ export default function AdminProdutos() {
       } else {
         payload.createdAt = new Date().toISOString();
         if (!payload.images) payload.images = [];
-        await addDoc(collection(db, 'products'), payload);
+        await addDoc(collection(db, 'rental_equipments'), payload);
       }
     },
     onSuccess: () => {

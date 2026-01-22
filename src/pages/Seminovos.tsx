@@ -14,7 +14,7 @@ const Seminovos = () => {
             // Fetch ALL items then filter for 'isForSale' == true
             // We do this client-side for now to avoid complex indexes, 
             // but in production we should index 'commercial.isForSale'
-            const q = query(collection(db, 'products'));
+            const q = query(collection(db, 'rental_equipments'));
             const querySnapshot = await getDocs(q);
 
             const items = querySnapshot.docs.map(doc => {
