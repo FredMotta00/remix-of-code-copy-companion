@@ -142,17 +142,24 @@ const Auth = () => {
       const userCredential = await createUserWithEmailAndPassword(auth, signupEmail, signupPassword);
       const user = userCredential.user;
 
-      // 2. Salva os dados extras (Nome, CPF, Telefone) no Banco de Dados
-      // Diferente do Supabase, o Firebase Auth não guarda esses dados nativamente, então usamos a coleção 'users'
-      await setDoc(doc(db, "users", user.uid), {
+      // 2. Salva os dados do cliente no Firestore (BOS compatible)
+      // Criamos APENAS em 'customers' (compartilhada com BOS)
+      const customerData = {
         uid: user.uid,
         email: signupEmail,
-        fullName: signupNome,
+        name: signupNome,
         phone: signupTelefone,
-        document: signupDocumento,
-        role: "user", // Padrão
-        createdAt: new Date().toISOString()
-      });
+        cpfCnpj: signupDocumento,
+        role: "user",
+        active: true,
+        createdAt: new Date(),
+        source: 'EXS_Locacoes',
+        permissions: [],
+        roleId: 'CUSTOMER'
+      };
+
+      // Salva na collection 'customers' (compartilhada com BOS)
+      await setDoc(doc(db, "customers", user.uid), customerData);
 
       toast.success('Cadastro realizado com sucesso!');
       // O onAuthStateChanged vai redirecionar automaticamente

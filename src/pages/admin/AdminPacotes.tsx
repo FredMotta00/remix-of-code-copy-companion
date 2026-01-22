@@ -125,7 +125,7 @@ export default function AdminPacotes() {
     const { data: availableProducts = [] } = useQuery({
         queryKey: ['admin-products-for-packages'],
         queryFn: async () => {
-            const querySnapshot = await getDocs(collection(db, 'rental_equipments'));
+            const querySnapshot = await getDocs(collection(db, 'products'));
             return querySnapshot.docs.map(doc => {
                 const data = doc.data();
                 return {
