@@ -78,7 +78,7 @@ const Home = () => {
   } = useQuery({
     queryKey: ['produtos'],
     queryFn: async () => {
-      const produtosRef = collection(db, 'inventory');
+      const produtosRef = collection(db, 'rental_equipments');
       const q = query(produtosRef);
       const querySnapshot = await getDocs(q);
 

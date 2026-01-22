@@ -25,3 +25,8 @@ dist-ssr
 
 # Scripts with secrets
 scripts/addAdmin.ts
+
+# Environment variables
+.env
+.env.local
+.env.*.local

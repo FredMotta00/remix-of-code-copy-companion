@@ -103,7 +103,7 @@ const AdminPromocoes = () => {
     const { data: products = [] } = useQuery({
         queryKey: ['admin-products-minimal'],
         queryFn: async () => {
-            const q = query(collection(db, 'inventory'));
+            const q = query(collection(db, 'rental_equipments'));
             const snapshot = await getDocs(q);
             return snapshot.docs.map(doc => ({
                 id: doc.id,

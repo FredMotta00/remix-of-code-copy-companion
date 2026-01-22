@@ -2,15 +2,15 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
-// TODO: Replace the following with your app's Firebase project configuration
-// See: https://firebase.google.com/docs/web/learn-more#config-object
+// Firebase configuration - Connected to BOS (GPECX_FLOW)
+// Project: comexs-r1g97
 const firebaseConfig = {
-    apiKey: "AIzaSyCE0drNpwpGmvZJZk8KUuthqUqOi1k6R9c",
-    authDomain: "aluguel-5f786.firebaseapp.com",
-    projectId: "aluguel-5f786",
-    storageBucket: "aluguel-5f786.firebasestorage.app",
-    messagingSenderId: "355974947758",
-    appId: "1:355974947758:web:9daf0b91b776a022f91e3f"
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyAhn85m2KDDeIZE51uHem5MHM0VwoNlWaU",
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "comexs-r1g97.firebaseapp.com",
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "comexs-r1g97",
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "comexs-r1g97.firebasestorage.app",
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "1083099377370",
+    appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:1083099377370:web:abd9647fbd14f75ea4bfe3"
 };
 
 // Initialize Firebase

@@ -23,7 +23,7 @@ export default function AdminDashboard() {
     queryKey: ['admin-stats'],
     queryFn: async () => {
       const reservasCol = collection(db, 'reservas');
-      const produtosCol = collection(db, 'produtos');
+      const produtosCol = collection(db, 'rental_equipments');
 
       const [reservasSnapshot, produtosSnapshot] = await Promise.all([
         getDocs(reservasCol),

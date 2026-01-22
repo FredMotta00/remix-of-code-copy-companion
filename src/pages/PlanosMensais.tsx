@@ -27,7 +27,7 @@ const PlanosMensais = () => {
     queryFn: async () => {
       // Create a query against the collection
       const q = query(
-        collection(db, 'inventory')
+        collection(db, 'rental_equipments')
       );
 
       const querySnapshot = await getDocs(q);
