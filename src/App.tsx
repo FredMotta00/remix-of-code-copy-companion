@@ -12,7 +12,7 @@ import Home from "@/pages/Home";
 import ProdutoDetalhes from "@/pages/ProdutoDetalhes";
 import MinhasReservas from "@/pages/MinhasReservas";
 import PlanosMensais from "@/pages/PlanosMensais";
-import Seminovos from "@/pages/Seminovos";
+// import Seminovos from "@/pages/Seminovos"; // REMOVIDO - Venda integrada em produtos
 import Configuracoes from "@/pages/Configuracoes";
 import ClientDashboard from "@/pages/ClientDashboard";
 import Wallet from "@/pages/Wallet";
@@ -53,7 +53,7 @@ function App() {
                   <Route element={<Layout />}>
                     <Route path="/" element={<Home />} />
                     <Route path="/produto/:id" element={<ProdutoDetalhes />} />
-                    <Route path="/seminovos" element={<Seminovos />} />
+                    {/* <Route path="/seminovos" element={<Seminovos />} /> REMOVIDO */}
                     <Route path="/planos" element={<PlanosMensais />} />
                     <Route path="/minhas-reservas" element={<MinhasReservas />} />
                     <Route path="/minha-conta" element={<ClientDashboard />} />
